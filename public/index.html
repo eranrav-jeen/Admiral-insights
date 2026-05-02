@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="he" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admiral Insights</title>
+  <link rel="stylesheet" href="/styles.css" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <!-- chartjs-adapter-date-fns for time axis -->
+  <script src="https://cdn.jsdelivr.net/npm/date-fns@3.6.0/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <!-- Frappe Gantt -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.css" />
+  <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     LOGIN SCREEN
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="login-screen" class="login-screen hidden">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="/logo.svg" alt="JEEN.AI" />
+    </div>
+    <h1 class="login-title">Admiral Insights</h1>
+    <p class="login-sub">Internal analytics dashboard</p>
+    <form id="login-form" class="login-form">
+      <input
+        id="password-input"
+        type="password"
+        placeholder="Enter password"
+        autocomplete="current-password"
+        required
+      />
+      <button type="submit" class="btn btn-primary btn-full">Sign in</button>
+      <p id="login-error" class="login-error hidden">Incorrect password</p>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     APP SHELL
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="app" class="app hidden">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <img src="/logo.svg" alt="JEEN.AI" />
+      <span class="sidebar-app-name">Admiral Insights</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-tab="upload">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        Upload
+      </button>
+      <button class="nav-item" data-tab="overview">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Overview
+      </button>
+      <button class="nav-item" data-tab="charts">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Charts
+      </button>
+      <button class="nav-item" data-tab="gantt">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
+        Gantt
+      </button>
+      <button class="nav-item" data-tab="insights">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        AI Insights
+      </button>
+    </nav>
+
+    <div class="sidebar-files" id="sidebar-files">
+      <!-- Loaded files appear here -->
+    </div>
+
+    <button class="sidebar-logout" id="logout-btn">
+      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Sign out
+    </button>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- ── FILTERS BAR ──────────────────────────────────────────────────── -->
+    <div class="filters-bar" id="filters-bar" style="display:none">
+      <div class="filter-group">
+        <label>From</label>
+        <input type="date" id="filter-from" />
+      </div>
+      <div class="filter-group">
+        <label>To</label>
+        <input type="date" id="filter-to" />
+      </div>
+      <div class="filter-group">
+        <label>Project</label>
+        <select id="filter-project"><option value="">All projects</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Employee</label>
+        <select id="filter-employee"><option value="">All employees</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Sub-project</label>
+        <select id="filter-subproject"><option value="">All sub-projects</option></select>
+      </div>
+      <button class="btn btn-ghost" id="reset-filters">Reset</button>
+    </div>
+
+    <!-- ── TABS ─────────────────────────────────────────────────────────── -->
+
+    <!-- Upload tab -->
+    <section class="tab-panel active" id="tab-upload">
+      <div class="page-header">
+        <h2>Upload Reports</h2>
+        <p>Drag and drop Admiral Excel exports here, or click to browse.</p>
+      </div>
+      <div class="upload-zone" id="upload-zone">
+        <div class="upload-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        </div>
+        <p class="upload-primary">Drop .xls / .xlsx files here</p>
+        <p class="upload-secondary">or <span class="upload-browse">browse files</span></p>
+        <input type="file" id="file-input" accept=".xls,.xlsx" multiple style="display:none" />
+      </div>
+      <div id="upload-status" class="upload-status hidden"></div>
+      <div id="loaded-files-list" class="loaded-files-list hidden">
+        <h3>Loaded files</h3>
+        <div id="files-table"></div>
+        <button class="btn btn-ghost btn-sm" id="clear-data-btn">Clear all data</button>
+      </div>
+    </section>
+
+    <!-- Overview tab -->
+    <section class="tab-panel" id="tab-overview">
+      <div class="page-header">
+        <h2>Overview</h2>
+      </div>
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Total Hours</div><div class="kpi-value" id="kpi-hours">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Records</div><div class="kpi-value" id="kpi-records">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Employees</div><div class="kpi-value" id="kpi-employees">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Projects</div><div class="kpi-value" id="kpi-projects">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Period</div><div class="kpi-value kpi-small" id="kpi-period">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Avg hrs / employee</div><div class="kpi-value" id="kpi-avg">—</div></div>
+      </div>
+
+      <div class="chart-row">
+        <div class="chart-card chart-card--half">
+          <h3>Hours by Project</h3>
+          <div class="chart-wrap"><canvas id="chart-projects-overview"></canvas></div>
+        </div>
+        <div class="chart-card chart-card--half">
+          <h3>Hours by Employee</h3>
+          <div class="chart-wrap"><canvas id="chart-employees-overview"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Charts tab -->
+    <section class="tab-panel" id="tab-charts">
+      <div class="page-header">
+        <h2>Charts</h2>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card chart-card--full">
+          <h3>Monthly hours trend</h3>
+          <div class="chart-wrap chart-wrap--tall"><canvas id="chart-monthly"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card chart-card--half">
+          <h3>Hours per Sub-project</h3>
+          <div class="chart-wrap"><canvas id="chart-subprojects"></canvas></div>
+        </div>
+        <div class="chart-card chart-card--half">
+          <h3>Employee workload distribution</h3>
+          <div class="chart-wrap"><canvas id="chart-heatmap"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gantt tab -->
+    <section class="tab-panel" id="tab-gantt">
+      <div class="page-header">
+        <h2>Gantt — Task Timeline</h2>
+        <div class="gantt-controls">
+          <label>Group by
+            <select id="gantt-group">
+              <option value="subProject">Sub-project</option>
+              <option value="project">Project</option>
+              <option value="employee">Employee</option>
+            </select>
+          </label>
+          <label>View
+            <select id="gantt-view">
+              <option value="Week">Week</option>
+              <option value="Month">Month</option>
+              <option value="Day">Day</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div class="gantt-scroll">
+        <div id="gantt-container"></div>
+      </div>
+      <p id="gantt-empty" class="empty-msg hidden">No data to display. Upload a file and apply filters.</p>
+    </section>
+
+    <!-- AI Insights tab -->
+    <section class="tab-panel" id="tab-insights">
+      <div class="page-header">
+        <h2>AI Insights</h2>
+        <p>Powered by Claude claude-sonnet-4-6 — analysing your filtered dataset.</p>
+      </div>
+      <div class="insights-controls">
+        <textarea
+          id="insights-question"
+          placeholder="Ask a specific question (optional) — e.g. 'Which employee looks overloaded?' — or leave blank for a general analysis."
+          rows="3"
+        ></textarea>
+        <button class="btn btn-primary" id="insights-btn">
+          <span id="insights-btn-text">Generate insights</span>
+          <span id="insights-spinner" class="spinner hidden"></span>
+        </button>
+      </div>
+      <div id="insights-output" class="insights-output hidden"></div>
+    </section>
+
+  </main>
+</div>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>
