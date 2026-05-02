@@ -655,7 +655,11 @@ function buildLineChart(id, data) {
           align: 'top',
           color: '#6366f1',
           font: { size: 11, weight: 'bold' },
-          formatter: v => `${v}h`
+          formatter: (v, ctx) => {
+            const total = ctx.dataset.data.reduce((s, x) => s + (x || 0), 0);
+            const pct = total > 0 ? ((v / total) * 100).toFixed(0) : 0;
+            return `${v}h (${pct}%)`;
+          }
         }
       },
       scales: { y: { beginAtZero: true } }
@@ -701,9 +705,12 @@ function buildStackedBar(id, records) {
           color: '#374151',
           font: { size: 11, weight: 'bold' },
           formatter: (_, ctx) => {
-            const total = ctx.chart.data.datasets
+            const empTotal = ctx.chart.data.datasets
               .reduce((s, ds) => s + (ds.data[ctx.dataIndex] || 0), 0);
-            return `${total.toFixed(0)}h`;
+            const grandTotal = ctx.chart.data.datasets
+              .reduce((s, ds) => s + ds.data.reduce((a, b) => a + (b || 0), 0), 0);
+            const pct = grandTotal > 0 ? ((empTotal / grandTotal) * 100).toFixed(0) : 0;
+            return `${empTotal.toFixed(0)}h (${pct}%)`;
           }
         }
       },
