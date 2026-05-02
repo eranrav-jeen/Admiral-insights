@@ -694,20 +694,16 @@ function buildStackedBar(id, records) {
       plugins: {
         legend: { position: 'bottom', labels: { boxWidth: 12 } },
         datalabels: {
-          display: ctx => {
-            // Only label segments that are at least 5% of that employee's total
-            const empTotal = ctx.chart.data.datasets
+          // Only draw on the topmost (last) dataset so the label sits above the full bar
+          display: ctx => ctx.datasetIndex === ctx.chart.data.datasets.length - 1,
+          anchor: 'end',
+          align: 'end',
+          color: '#374151',
+          font: { size: 11, weight: 'bold' },
+          formatter: (_, ctx) => {
+            const total = ctx.chart.data.datasets
               .reduce((s, ds) => s + (ds.data[ctx.dataIndex] || 0), 0);
-            return empTotal > 0 && (ctx.dataset.data[ctx.dataIndex] / empTotal) >= 0.05;
-          },
-          anchor: 'center',
-          align: 'center',
-          color: '#fff',
-          font: { size: 10, weight: 'bold' },
-          formatter: (v, ctx) => {
-            const empTotal = ctx.chart.data.datasets
-              .reduce((s, ds) => s + (ds.data[ctx.dataIndex] || 0), 0);
-            return `${((v / empTotal) * 100).toFixed(0)}%`;
+            return `${total.toFixed(0)}h`;
           }
         }
       },
