@@ -575,6 +575,10 @@ const PALETTE = [
   '#14b8a6','#a78bfa','#fb923c','#4ade80','#38bdf8'
 ];
 
+// Register datalabels plugin but keep it off by default — each chart opts in
+Chart.register(ChartDataLabels);
+Chart.defaults.set('plugins.datalabels', { display: false });
+
 function destroyChart(id) {
   if (state.charts[id]) {
     state.charts[id].destroy();
@@ -593,6 +597,7 @@ function buildBarChart(id, data, color) {
   destroyChart(id);
   const canvas = $(id);
   if (!canvas || !data.length) return;
+  const total = data.reduce((s, [, v]) => s + v, 0);
   state.charts[id] = new Chart(canvas, {
     type: 'bar',
     data: {
@@ -603,7 +608,18 @@ function buildBarChart(id, data, color) {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      layout: { padding: { right: 52 } },
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          display: true,
+          anchor: 'end',
+          align: 'right',
+          color: '#6b7280',
+          font: { size: 11 },
+          formatter: v => `${((v / total) * 100).toFixed(1)}%`
+        }
+      },
       scales: { x: { beginAtZero: true } }
     }
   });
@@ -630,7 +646,18 @@ function buildLineChart(id, data) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      layout: { padding: { top: 24 } },
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          display: true,
+          anchor: 'end',
+          align: 'top',
+          color: '#6366f1',
+          font: { size: 11, weight: 'bold' },
+          formatter: v => `${v}h`
+        }
+      },
       scales: { y: { beginAtZero: true } }
     }
   });
@@ -664,7 +691,26 @@ function buildStackedBar(id, records) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12 } },
+        datalabels: {
+          display: ctx => {
+            // Only label segments that are at least 5% of that employee's total
+            const empTotal = ctx.chart.data.datasets
+              .reduce((s, ds) => s + (ds.data[ctx.dataIndex] || 0), 0);
+            return empTotal > 0 && (ctx.dataset.data[ctx.dataIndex] / empTotal) >= 0.05;
+          },
+          anchor: 'center',
+          align: 'center',
+          color: '#fff',
+          font: { size: 10, weight: 'bold' },
+          formatter: (v, ctx) => {
+            const empTotal = ctx.chart.data.datasets
+              .reduce((s, ds) => s + (ds.data[ctx.dataIndex] || 0), 0);
+            return `${((v / empTotal) * 100).toFixed(0)}%`;
+          }
+        }
+      },
       scales: {
         x: { stacked: true },
         y: { stacked: true, beginAtZero: true }
