@@ -80,7 +80,6 @@ Both formats are auto-detected from the sheet name and first data row.
 | Variable          | Description                                          |
 |-------------------|------------------------------------------------------|
 | `PASSWORD`        | Shared login password (no user accounts)             |
-| `ANTHROPIC_API_KEY` | Your Anthropic API key                             |
 | `SESSION_SECRET`  | Random string for signing session cookies            |
 | `PORT`            | Port to listen on (default `3000`)                   |
 
@@ -92,7 +91,6 @@ Both formats are auto-detected from the sheet name and first data row.
 |------------|------------------------------------------|
 | Backend    | Node.js + Express + express-session      |
 | Excel      | SheetJS (xlsx)                           |
-| AI         | @anthropic-ai/sdk (claude-sonnet-4-6)    |
 | Charts     | Chart.js 4 + chartjs-adapter-date-fns    |
 | Gantt      | Frappe Gantt 0.6                         |
 | Process    | pm2                                      |

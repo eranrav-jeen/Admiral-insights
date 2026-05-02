@@ -427,43 +427,6 @@ body {
 .gantt .bar-label { font-size: 11px; }
 .gantt .grid-header { fill: #f9fafb; }
 
-/* ── AI Insights ───────────────────────────────────────────────────────────── */
-.insights-controls {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  margin-bottom: 24px;
-  max-width: 720px;
-}
-
-.insights-controls textarea {
-  flex: 1;
-  padding: 10px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  font-size: 13px;
-  font-family: inherit;
-  resize: vertical;
-  outline: none;
-  transition: border-color .2s;
-}
-.insights-controls textarea:focus { border-color: var(--color-accent); }
-
-.insights-output {
-  background: var(--color-surface);
-  border-radius: var(--radius);
-  padding: 24px 28px;
-  box-shadow: var(--shadow);
-  max-width: 720px;
-  line-height: 1.7;
-}
-
-.insights-output h4 { font-size: 15px; font-weight: 700; margin: 16px 0 6px; }
-.insights-output p  { margin: 6px 0; color: var(--color-text); font-size: 13.5px; }
-.insights-output ul { padding-left: 20px; margin: 6px 0; }
-.insights-output li { margin: 4px 0; font-size: 13.5px; }
-.insights-output strong { font-weight: 600; }
-
 /* ── Spinner ───────────────────────────────────────────────────────────────── */
 .spinner {
   width: 15px;

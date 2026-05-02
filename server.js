@@ -4,7 +4,6 @@ const session = require('express-session');
 const multer = require('multer');
 const path = require('path');
 const { parseExcelFile } = require('./src/parser');
-const { generateInsights } = require('./src/insights');
 
 const app = express();
 const upload = multer({
@@ -94,22 +93,6 @@ app.delete('/api/data', requireAuth, (req, res) => {
 app.get('/api/data', requireAuth, (req, res) => {
   if (!req.session.data) return res.json({ records: [], files: [] });
   res.json(req.session.data);
-});
-
-// ── AI Insights ───────────────────────────────────────────────────────────────
-
-app.post('/api/insights', requireAuth, async (req, res) => {
-  const records = req.session.data?.records;
-  if (!records?.length) {
-    return res.status(400).json({ error: 'No data loaded. Upload an Excel file first.' });
-  }
-  try {
-    const insight = await generateInsights(records, req.body.question || null);
-    res.json({ insight });
-  } catch (err) {
-    console.error('Insights error:', err);
-    res.status(500).json({ error: err.message });
-  }
 });
 
 // ── Serve SPA ─────────────────────────────────────────────────────────────────

@@ -374,54 +374,6 @@ $('gantt-view').addEventListener('change', () => {
   if (state.gantt) state.gantt.change_view_mode($('gantt-view').value);
 });
 
-// ── AI Insights tab ───────────────────────────────────────────────────────────
-$('insights-btn').addEventListener('click', async () => {
-  if (!state.filtered.length) {
-    alert('No data loaded. Upload an Excel file first.');
-    return;
-  }
-  const btn     = $('insights-btn');
-  const spinner = $('insights-spinner');
-  const btnTxt  = $('insights-btn-text');
-  const output  = $('insights-output');
-
-  btn.disabled = true;
-  show(spinner);
-  btnTxt.textContent = 'Analysing…';
-  hide(output);
-
-  try {
-    const question = $('insights-question').value.trim() || null;
-    const { insight } = await api('/api/insights', {
-      method: 'POST',
-      body: JSON.stringify({ question })
-    });
-    output.innerHTML = markdownToHtml(insight);
-    show(output);
-  } catch (err) {
-    output.innerHTML = `<p class="error-msg">Error: ${err.message}</p>`;
-    show(output);
-  } finally {
-    btn.disabled = false;
-    hide(spinner);
-    btnTxt.textContent = 'Generate insights';
-  }
-});
-
-// Minimal Markdown → HTML (bold, bullets, numbered lists)
-function markdownToHtml(md) {
-  return md
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^#{1,3} (.+)$/gm, '<h4>$1</h4>')
-    .replace(/^\* (.+)$/gm,  '<li>$1</li>')
-    .replace(/^- (.+)$/gm,   '<li>$1</li>')
-    .replace(/^\d+\. (.+)$/gm,'<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/^(?!<[hup])(.+)$/gm, '<p>$1</p>');
-}
-
 // ── Chart builders ────────────────────────────────────────────────────────────
 const PALETTE = [
   '#6366f1','#10b981','#f59e0b','#ef4444','#3b82f6',
