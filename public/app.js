@@ -87,6 +87,7 @@ document.querySelectorAll('.nav-item').forEach(btn => {
     if (tab === 'overview')  renderOverview();
     if (tab === 'charts')    renderCharts();
     if (tab === 'gantt')     renderGantt();
+    if (tab === 'insights')  renderInsights();
   });
 });
 
@@ -373,6 +374,199 @@ $('gantt-group').addEventListener('change', renderGantt);
 $('gantt-view').addEventListener('change', () => {
   if (state.gantt) state.gantt.change_view_mode($('gantt-view').value);
 });
+
+// ── Insights tab ─────────────────────────────────────────────────────────────
+
+function renderInsights() {
+  const r = state.filtered;
+  const empty = $('insights-empty');
+  const grid  = $('insights-grid');
+
+  if (!r.length) { show(empty); grid.innerHTML = ''; return; }
+  hide(empty);
+
+  const totalHours  = r.reduce((s, x) => s + x.hours, 0);
+  const byEmployee  = aggregate(r, 'employee');
+  const byProject   = aggregate(r, 'project');
+  const bySubProject= aggregate(r, 'subProject');
+  const numEmployees= Object.keys(byEmployee).length;
+  const avgHours    = totalHours / numEmployees;
+
+  // Working days per employee
+  const empDays = {};
+  r.forEach(x => {
+    if (!empDays[x.employee]) empDays[x.employee] = new Set();
+    if (x.date) empDays[x.employee].add(x.date);
+  });
+
+  // Monthly hours per employee
+  const empMonthly = {};
+  r.forEach(x => {
+    if (!x.date) return;
+    const m = x.date.slice(0, 7);
+    if (!empMonthly[x.employee]) empMonthly[x.employee] = {};
+    empMonthly[x.employee][m] = (empMonthly[x.employee][m] || 0) + x.hours;
+  });
+
+  // Monthly totals for trend
+  const monthly = {};
+  r.forEach(x => {
+    if (!x.date) return;
+    const m = x.date.slice(0, 7);
+    monthly[m] = (monthly[m] || 0) + x.hours;
+  });
+  const monthEntries = Object.entries(monthly).sort(([a], [b]) => a.localeCompare(b));
+
+  // Trend: compare first half vs second half
+  let trend = 'stable', trendIcon = '➡️', trendColor = 'neutral';
+  if (monthEntries.length >= 2) {
+    const mid   = Math.floor(monthEntries.length / 2);
+    const first = monthEntries.slice(0, mid).reduce((s, [, h]) => s + h, 0) / mid;
+    const last  = monthEntries.slice(mid).reduce((s, [, h]) => s + h, 0) / (monthEntries.length - mid);
+    if (last > first * 1.15)       { trend = 'Growing';   trendIcon = '📈'; trendColor = 'warn'; }
+    else if (last < first * 0.85)  { trend = 'Declining'; trendIcon = '📉'; trendColor = 'info'; }
+    else                           { trend = 'Stable';    trendIcon = '➡️'; trendColor = 'neutral'; }
+  }
+
+  // Overallocated: > 160h in any single month
+  const overloaded = [];
+  Object.entries(empMonthly).forEach(([emp, months]) => {
+    Object.entries(months).forEach(([month, hours]) => {
+      if (hours > 160) overloaded.push({ emp, month, hours: hours.toFixed(1) });
+    });
+  });
+
+  // Underutilised: below 30% of team average
+  const underused = Object.entries(byEmployee)
+    .filter(([, h]) => h < avgHours * 0.3)
+    .sort(([, a], [, b]) => a - b);
+
+  // Top project's share
+  const topProj   = topN(byProject, 3);
+  const topEmp    = topN(byEmployee, 3);
+  const topSub    = topN(bySubProject, 1)[0];
+  const topProjPct= topProj[0] ? ((topProj[0][1] / totalHours) * 100).toFixed(0) : 0;
+
+  // Avg hours per active day per employee
+  const empAvgDay = Object.entries(byEmployee).map(([emp, h]) => ({
+    emp, h: h.toFixed(1),
+    days: empDays[emp]?.size || 1,
+    avg: (h / (empDays[emp]?.size || 1)).toFixed(1)
+  })).sort((a, b) => b.h - a.h);
+
+  const cards = [
+    // Workload summary
+    {
+      color: 'blue',
+      title: 'Workload summary',
+      icon: '📊',
+      rows: [
+        `Total hours logged: <strong>${totalHours.toFixed(1)}h</strong>`,
+        `Across <strong>${numEmployees}</strong> employee${numEmployees > 1 ? 's' : ''} and <strong>${Object.keys(byProject).length}</strong> project${Object.keys(byProject).length > 1 ? 's' : ''}`,
+        `Team average: <strong>${avgHours.toFixed(1)}h</strong> per employee`
+      ]
+    },
+
+    // Monthly trend
+    {
+      color: trendColor,
+      title: 'Monthly trend',
+      icon: trendIcon,
+      rows: [
+        `Workload is <strong>${trend}</strong> across ${monthEntries.length} month${monthEntries.length > 1 ? 's' : ''}`,
+        ...monthEntries.map(([m, h]) => `${m}: <strong>${h.toFixed(1)}h</strong>`)
+      ]
+    },
+
+    // Top projects
+    {
+      color: 'blue',
+      title: 'Top projects by hours',
+      icon: '🏆',
+      rows: topProj.map(([name, h], i) =>
+        `${i + 1}. <strong>${name || '(none)'}</strong> — ${h.toFixed(1)}h (${((h / totalHours) * 100).toFixed(0)}%)`
+      )
+    },
+
+    // Top employees
+    {
+      color: 'blue',
+      title: 'Top employees by hours',
+      icon: '👤',
+      rows: empAvgDay.slice(0, 5).map((e, i) =>
+        `${i + 1}. <strong>${e.emp}</strong> — ${e.h}h over ${e.days} day${e.days > 1 ? 's' : ''} (avg ${e.avg}h/day)`
+      )
+    },
+
+    // Concentration risk
+    {
+      color: +topProjPct > 60 ? 'warn' : 'green',
+      title: 'Project concentration',
+      icon: +topProjPct > 60 ? '⚠️' : '✅',
+      rows: topProj[0] ? [
+        `"<strong>${topProj[0][0]}</strong>" accounts for <strong>${topProjPct}%</strong> of all hours`,
+        +topProjPct > 60
+          ? 'High concentration — consider whether this is intentional'
+          : 'Hours are reasonably spread across projects'
+      ] : ['Not enough data']
+    },
+
+    // Overallocation
+    overloaded.length ? {
+      color: 'red',
+      title: 'Potential overallocation',
+      icon: '🔴',
+      rows: [
+        'Employees exceeding 160h in a single month:',
+        ...overloaded.map(o => `<strong>${o.emp}</strong> — ${o.hours}h in ${o.month}`)
+      ]
+    } : {
+      color: 'green',
+      title: 'No overallocation detected',
+      icon: '✅',
+      rows: ['No employee exceeded 160h in any single month']
+    },
+
+    // Underutilisation
+    underused.length ? {
+      color: 'warn',
+      title: 'Low utilisation',
+      icon: '⚠️',
+      rows: [
+        `Below 30% of team average (${avgHours.toFixed(1)}h):`,
+        ...underused.map(([emp, h]) => `<strong>${emp}</strong> — ${h.toFixed(1)}h`)
+      ]
+    } : {
+      color: 'green',
+      title: 'Utilisation looks balanced',
+      icon: '✅',
+      rows: ['No employees are significantly below the team average']
+    },
+
+    // Top sub-project
+    topSub ? {
+      color: 'blue',
+      title: 'Busiest sub-project',
+      icon: '🔍',
+      rows: [
+        `"<strong>${topSub[0]}</strong>" — ${topSub[1].toFixed(1)}h (${((topSub[1] / totalHours) * 100).toFixed(0)}% of total)`
+      ]
+    } : null
+
+  ].filter(Boolean);
+
+  grid.innerHTML = cards.map(c => `
+    <div class="insight-card insight-card--${c.color}">
+      <div class="insight-card-header">
+        <span class="insight-icon">${c.icon}</span>
+        <span class="insight-title">${c.title}</span>
+      </div>
+      <ul class="insight-rows">
+        ${c.rows.map(row => `<li>${row}</li>`).join('')}
+      </ul>
+    </div>
+  `).join('');
+}
 
 // ── Chart builders ────────────────────────────────────────────────────────────
 const PALETTE = [
