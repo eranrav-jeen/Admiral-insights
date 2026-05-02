@@ -32,7 +32,7 @@ npm start          # plain node
 
 ```bash
 cd /var/www
-git clone <your-repo> admiral-insights
+git clone https://github.com/eranrav-jeen/Admiral-insights.git admiral-insights
 cd admiral-insights
 npm install --production
 cp .env.example .env
@@ -43,7 +43,6 @@ mkdir -p logs
 ### 2. Start with pm2
 
 ```bash
-# Adjust cwd in ecosystem.config.js to /var/www/admiral-insights first
 pm2 start ecosystem.config.js
 pm2 save
 pm2 startup        # follow the printed command to enable auto-start on boot
