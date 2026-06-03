@@ -157,6 +157,21 @@
       <div id="loaded-files-list" class="loaded-files-list hidden">
         <h3>Loaded files</h3>
         <div id="files-table"></div>
+        <div class="upload-date-range">
+          <h3>Analysis period</h3>
+          <div class="upload-date-range-inputs">
+            <div class="filter-group">
+              <label>From</label>
+              <input type="date" id="upload-filter-from" />
+            </div>
+            <div class="filter-group">
+              <label>To</label>
+              <input type="date" id="upload-filter-to" />
+            </div>
+            <button class="btn btn-ghost btn-sm" id="upload-reset-dates">Reset to full range</button>
+          </div>
+          <p class="upload-date-hint" id="upload-date-hint"></p>
+        </div>
         <button class="btn btn-ghost btn-sm" id="clear-data-btn">Clear all data</button>
       </div>
     </section>

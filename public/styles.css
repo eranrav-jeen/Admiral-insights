@@ -484,6 +484,33 @@ body {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Misc ──────────────────────────────────────────────────────────────────── */
+/* ── Upload date range ─────────────────────────────────────────────────────── */
+.upload-date-range {
+  margin-top: 20px;
+  padding: 18px 20px;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+}
+.upload-date-range h3 {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--color-text);
+}
+.upload-date-range-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.upload-date-hint {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--color-muted);
+  min-height: 18px;
+}
+
 .badge {
   display: inline-block;
   padding: 2px 8px;

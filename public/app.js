@@ -173,8 +173,15 @@ function populateFilterOptions() {
   // Default date range
   const dates = state.allRecords.map(r => r.date).filter(Boolean).sort();
   if (dates.length) {
-    $('filter-from').value = dates[0];
-    $('filter-to').value   = dates[dates.length - 1];
+    $('filter-from').value        = dates[0];
+    $('filter-to').value          = dates[dates.length - 1];
+    $('upload-filter-from').min   = dates[0];
+    $('upload-filter-from').max   = dates[dates.length - 1];
+    $('upload-filter-to').min     = dates[0];
+    $('upload-filter-to').max     = dates[dates.length - 1];
+    $('upload-filter-from').value = dates[0];
+    $('upload-filter-to').value   = dates[dates.length - 1];
+    updateUploadDateHint();
   }
 }
 
@@ -201,6 +208,38 @@ $('reset-filters').addEventListener('click', () => {
   populateFilterOptions();
   applyFilters();
   refreshActiveTab();
+});
+
+// ── Upload-tab date range ─────────────────────────────────────────────────────
+function updateUploadDateHint() {
+  const from = $('upload-filter-from').value;
+  const to   = $('upload-filter-to').value;
+  const hint = $('upload-date-hint');
+  if (!from && !to) { hint.textContent = ''; return; }
+  const filtered = state.allRecords.filter(r => {
+    if (from && r.date && r.date < from) return false;
+    if (to   && r.date && r.date > to)   return false;
+    return true;
+  });
+  const hrs = filtered.reduce((s, r) => s + r.hours, 0);
+  hint.textContent = `${filtered.length.toLocaleString()} records · ${hrs.toFixed(1)} hours in selected period`;
+}
+
+['upload-filter-from', 'upload-filter-to'].forEach(id => {
+  $(id).addEventListener('change', () => {
+    $('filter-from').value = $('upload-filter-from').value;
+    $('filter-to').value   = $('upload-filter-to').value;
+    applyFilters();
+    updateUploadDateHint();
+  });
+});
+
+$('upload-reset-dates').addEventListener('click', () => {
+  populateFilterOptions();   // resets filter-from / filter-to to full range
+  $('upload-filter-from').value = $('filter-from').value;
+  $('upload-filter-to').value   = $('filter-to').value;
+  applyFilters();
+  updateUploadDateHint();
 });
 
 function applyFilters() {
