@@ -1,21 +1,23 @@
 const XLSX = require('xlsx');
 
-// Project report column indices (12-col layout, RTL Hebrew stored LTR)
+// Project report column indices (16-col layout)
+// Header: ק"מ | תאור | יעד | עד שעה | משעה | שעות נסיעה | שעות | יום | תאריך | סה"כ שעות | עובד | תת פרוייקט | פרוייקט | לקוח
 const PROJECT_COL = {
-  TOTAL_HOURS: 0,
-  HOURS:       4,
-  DESCRIPTION: 6,
-  EMPLOYEE:    7,
+  DESCRIPTION: 1,
+  HOURS:       6,
   DATE:        8,
-  SUB_PROJECT: 9,
-  PROJECT:     10,
-  CUSTOMER:    11
+  TOTAL_HOURS: 9,
+  EMPLOYEE:    10,
+  SUB_PROJECT: 11,
+  PROJECT:     12,
+  CUSTOMER:    13,
 };
 
 // Employee report column indices (11-col layout)
+// Header: סה"כ | ק"מ | יעד | שעות נסיעה | שעות בלתי נמנע | שעות עבודה | תת פרוייקט | פרוייקט | לקוח | תאריך | עובד
 const EMPLOYEE_COL = {
   TOTAL_HOURS: 0,
-  HOURS:       5,  // שעות עבודה
+  HOURS:       5,
   SUB_PROJECT: 6,
   PROJECT:     7,
   CUSTOMER:    8,
@@ -40,7 +42,8 @@ function toISODate(dt) {
   return `${y}-${m}-${d}`;
 }
 
-// Project/Customer report: hierarchy is Customer → Project → SubProject → leaf work record
+// Project/Customer report: hierarchy is Customer → Project → SubProject → Employee subtotal → leaf
+// Leaf rows are identified by having a date (col 8).
 function parseProjectRows(rows) {
   const records = [];
   const C = PROJECT_COL;
@@ -72,9 +75,11 @@ function parseProjectRows(rows) {
     } else if (rawProject) {
       project    = String(rawProject).trim();
       subProject = '';
-    } else if (rawSubProject) {
-      subProject = String(rawSubProject).trim();
-    } else if (rawDate && rawEmployee) {
+    } else if (rawSubProject && !rawDate) {
+      // Sub-project context row (employee subtotals also have sub-project filled, skip those too)
+      if (!rawEmployee) subProject = String(rawSubProject).trim();
+    } else if (rawDate) {
+      // Leaf work record
       const hours = typeof row[C.HOURS] === 'number'
         ? row[C.HOURS]
         : typeof row[C.TOTAL_HOURS] === 'number'
@@ -87,10 +92,10 @@ function parseProjectRows(rows) {
       records.push({
         customer,
         project,
-        subProject,
-        task:     String(row[C.DESCRIPTION] || '').replace(/\s+/g, ' ').trim(),
-        employee: String(rawEmployee).trim(),
-        date:     toISODate(dt),
+        subProject: rawSubProject ? String(rawSubProject).trim() : subProject,
+        task:       String(row[C.DESCRIPTION] || '').replace(/\s+/g, ' ').trim(),
+        employee:   rawEmployee ? String(rawEmployee).trim() : '',
+        date:       toISODate(dt),
         hours
       });
     }
@@ -133,7 +138,7 @@ function parseEmployeeRows(rows) {
       const dt = parseDate(String(rawDate));
       date = dt ? toISODate(dt) : null;
     } else if ((rawSubProject || rawProject || rawCustomer) && !rawDate && !rawEmployee) {
-      // Leaf work record — skip Admiral subtotal/total summary rows
+      // Leaf work record — skip Admiral grand-total footer rows
       if (String(rawSubProject || rawProject || rawCustomer).startsWith('סה"כ') ||
           String(rawSubProject || rawProject || rawCustomer).startsWith("סה\"כ")) continue;
       const hours = typeof row[C.HOURS] === 'number'
@@ -155,13 +160,13 @@ function parseEmployeeRows(rows) {
   return records;
 }
 
-// Detect report type from header row structure and content.
-// Employee report has 11 columns (עובד at col 10); project report has 12 (לקוח at col 11).
-function detectType(headerRow, titleRow, typeOverrideHint) {
+// Detect report type from the title row (row index 1).
+// Employee report title: "דוח שעות על פי עובד"
+// Project report title:  "דוח פרוייקטים"
+function detectType(titleRow, typeOverrideHint) {
   if (typeOverrideHint) return typeOverrideHint;
   const title = String(titleRow?.[0] || '').toLowerCase();
   if (title.includes('עובד') || title.includes('employee')) return 'employee';
-  if (headerRow && headerRow[10] === 'עובד') return 'employee';
   if (title.includes('לקוח') || title.includes('customer')) return 'customer';
   return 'project';
 }
@@ -175,7 +180,7 @@ function parseExcelFile(buffer, filename, typeOverride) {
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
   const manualOverride = (typeOverride && VALID_TYPES.has(typeOverride)) ? typeOverride : null;
-  const type = detectType(rows[3], rows[1], manualOverride);
+  const type = detectType(rows[1], manualOverride);
 
   const records = type === 'employee'
     ? parseEmployeeRows(rows)
