@@ -492,6 +492,51 @@ body {
 }
 .badge-project  { background: #ede9fe; color: #5b21b6; }
 .badge-employee { background: #d1fae5; color: #065f46; }
+.badge-customer { background: #fef3c7; color: #92400e; }
+.badge-auto     { background: #f1f5f9; color: #475569; }
+
+/* ── Report type selector ───────────────────────────────────────────────────── */
+.report-type-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.report-type-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.report-type-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.report-type-option {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+.report-type-option input[type="radio"] {
+  display: none;
+}
+.report-type-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.report-type-option input[type="radio"]:checked + .report-type-badge {
+  border-color: currentColor;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
+}
 
 .empty-msg { color: var(--color-muted); padding: 32px 0; text-align: center; }
 .error-msg { color: var(--color-danger); }

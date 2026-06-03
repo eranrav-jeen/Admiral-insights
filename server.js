@@ -62,10 +62,11 @@ app.post('/api/upload', requireAuth, upload.array('files', 20), (req, res) => {
       return res.status(400).json({ error: 'No files received' });
     }
 
+    const typeOverride = req.body.reportType || null;
     const incoming = req.files.map(f => {
       // Multer receives the filename as latin1 bytes; re-decode as UTF-8
       const name = Buffer.from(f.originalname, 'latin1').toString('utf8');
-      return parseExcelFile(f.buffer, name);
+      return parseExcelFile(f.buffer, name, typeOverride);
     });
     const allRecords = incoming.flatMap(r => r.records);
 

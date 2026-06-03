@@ -124,6 +124,27 @@
         <h2>Upload Reports</h2>
         <p>Drag and drop Admiral Excel exports here, or click to browse.</p>
       </div>
+      <div class="report-type-selector">
+        <span class="report-type-label">Report type</span>
+        <div class="report-type-options">
+          <label class="report-type-option">
+            <input type="radio" name="reportType" value="project" checked />
+            <span class="report-type-badge badge-project">Project</span>
+          </label>
+          <label class="report-type-option">
+            <input type="radio" name="reportType" value="employee" />
+            <span class="report-type-badge badge-employee">Employee</span>
+          </label>
+          <label class="report-type-option">
+            <input type="radio" name="reportType" value="customer" />
+            <span class="report-type-badge badge-customer">Customer</span>
+          </label>
+          <label class="report-type-option">
+            <input type="radio" name="reportType" value="" />
+            <span class="report-type-badge badge-auto">Auto-detect</span>
+          </label>
+        </div>
+      </div>
       <div class="upload-zone" id="upload-zone">
         <div class="upload-icon">
           <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>

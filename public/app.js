@@ -114,6 +114,8 @@ async function handleFiles(fileList) {
 
   const form = new FormData();
   for (const f of fileList) form.append('files', f);
+  const reportType = document.querySelector('input[name="reportType"]:checked')?.value || '';
+  if (reportType) form.append('reportType', reportType);
 
   try {
     const res = await fetch('/api/upload', { method: 'POST', body: form });

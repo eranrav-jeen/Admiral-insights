@@ -95,28 +95,32 @@ function parseHierarchicalRows(rows) {
   return records;
 }
 
-// Detect whether this is a Project report or an Employee report.
-// Both use the same column layout; the difference is which level sits at the top
-// of the hierarchy (Customer/Project vs Employee).
+const VALID_TYPES = new Set(['project', 'employee', 'customer']);
+
+// Detect the report type from sheet name / first data row when no override is given.
 function detectType(sheetName, firstDataRow) {
   if (!firstDataRow) return 'project';
-  // Employee report: top-level grouping is employee (col 7 populated, others empty)
+  const name = (sheetName || '').toLowerCase();
+  // Employee report: top-level grouping is employee
   if (firstDataRow[COL.EMPLOYEE] && !firstDataRow[COL.CUSTOMER] && !firstDataRow[COL.PROJECT]) {
     return 'employee';
   }
-  const name = (sheetName || '').toLowerCase();
   if (name.includes('employee') || name.includes('עובד')) return 'employee';
+  // Customer report: top-level grouping is customer only (no project column on first row)
+  if (firstDataRow[COL.CUSTOMER] && !firstDataRow[COL.PROJECT]) return 'customer';
+  if (name.includes('customer') || name.includes('לקוח')) return 'customer';
   return 'project';
 }
 
-function parseExcelFile(buffer, filename) {
+function parseExcelFile(buffer, filename, typeOverride) {
   const wb = XLSX.read(buffer, { type: 'buffer', cellDates: false });
   const sheetName = wb.SheetNames[0];
   const ws = wb.Sheets[sheetName];
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
-  // First data row is rows[3] (after 2 metadata rows + 1 header row)
-  const type = detectType(sheetName, rows[3]);
+  const type = (typeOverride && VALID_TYPES.has(typeOverride))
+    ? typeOverride
+    : detectType(sheetName, rows[3]);
   const records = parseHierarchicalRows(rows);
 
   return { filename, type, sheetName, records };
