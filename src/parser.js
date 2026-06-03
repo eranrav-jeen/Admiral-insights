@@ -133,7 +133,9 @@ function parseEmployeeRows(rows) {
       const dt = parseDate(String(rawDate));
       date = dt ? toISODate(dt) : null;
     } else if ((rawSubProject || rawProject || rawCustomer) && !rawDate && !rawEmployee) {
-      // Leaf work record
+      // Leaf work record — skip Admiral subtotal/total summary rows
+      if (String(rawSubProject || rawProject || rawCustomer).startsWith('סה"כ') ||
+          String(rawSubProject || rawProject || rawCustomer).startsWith("סה\"כ")) continue;
       const hours = typeof row[C.HOURS] === 'number'
         ? row[C.HOURS]
         : parseFloat(row[C.HOURS]) || 0;
