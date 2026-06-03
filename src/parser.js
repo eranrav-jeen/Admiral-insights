@@ -1,15 +1,26 @@
 const XLSX = require('xlsx');
 
-// Column indices in the Admiral hierarchical export (RTL Hebrew layout stored LTR)
-const COL = {
-  TOTAL_HOURS: 0,  // סה"כ שעות
-  HOURS:       4,  // שעות
-  DESCRIPTION: 6,  // תאור
-  EMPLOYEE:    7,  // עובד
-  DATE:        8,  // תאריך  DD/MM/YYYY
-  SUB_PROJECT: 9,  // תת פרוייקט
-  PROJECT:     10, // פרוייקט
-  CUSTOMER:    11  // לקוח
+// Project report column indices (12-col layout, RTL Hebrew stored LTR)
+const PROJECT_COL = {
+  TOTAL_HOURS: 0,
+  HOURS:       4,
+  DESCRIPTION: 6,
+  EMPLOYEE:    7,
+  DATE:        8,
+  SUB_PROJECT: 9,
+  PROJECT:     10,
+  CUSTOMER:    11
+};
+
+// Employee report column indices (11-col layout)
+const EMPLOYEE_COL = {
+  TOTAL_HOURS: 0,
+  HOURS:       5,  // שעות עבודה
+  SUB_PROJECT: 6,
+  PROJECT:     7,
+  CUSTOMER:    8,
+  DATE:        9,
+  EMPLOYEE:    10
 };
 
 // Parse "DD/MM/YYYY" → Date (returns null on failure)
@@ -29,12 +40,11 @@ function toISODate(dt) {
   return `${y}-${m}-${d}`;
 }
 
-// Walk through the hierarchical rows, tracking the Customer→Project→SubProject context.
-// A row is a "leaf" work record when it has a date and an employee name.
-function parseHierarchicalRows(rows) {
+// Project/Customer report: hierarchy is Customer → Project → SubProject → leaf work record
+function parseProjectRows(rows) {
   const records = [];
+  const C = PROJECT_COL;
 
-  // Find header row (contains "תאריך") and start parsing from the next line
   let dataStart = 3;
   for (let i = 0; i < Math.min(6, rows.length); i++) {
     if (Array.isArray(rows[i]) && rows[i].includes('תאריך')) {
@@ -43,39 +53,33 @@ function parseHierarchicalRows(rows) {
     }
   }
 
-  let customer = '';
-  let project = '';
-  let subProject = '';
+  let customer = '', project = '', subProject = '';
 
   for (let i = dataStart; i < rows.length; i++) {
     const row = rows[i];
     if (!row || row.every(v => v == null || v === '')) continue;
 
-    const rawCustomer    = row[COL.CUSTOMER];
-    const rawProject     = row[COL.PROJECT];
-    const rawSubProject  = row[COL.SUB_PROJECT];
-    const rawDate        = row[COL.DATE];
-    const rawEmployee    = row[COL.EMPLOYEE];
+    const rawCustomer   = row[C.CUSTOMER];
+    const rawProject    = row[C.PROJECT];
+    const rawSubProject = row[C.SUB_PROJECT];
+    const rawDate       = row[C.DATE];
+    const rawEmployee   = row[C.EMPLOYEE];
 
     if (rawCustomer) {
-      // Customer-level subtotal row → update context
       customer   = String(rawCustomer).trim();
       project    = '';
       subProject = '';
     } else if (rawProject) {
-      // Project-level subtotal row
       project    = String(rawProject).trim();
       subProject = '';
     } else if (rawSubProject) {
-      // Sub-project-level subtotal row
       subProject = String(rawSubProject).trim();
     } else if (rawDate && rawEmployee) {
-      // Leaf work record
-      const hours = typeof row[COL.HOURS] === 'number'
-        ? row[COL.HOURS]
-        : typeof row[COL.TOTAL_HOURS] === 'number'
-          ? row[COL.TOTAL_HOURS]
-          : parseFloat(row[COL.HOURS] || row[COL.TOTAL_HOURS]) || 0;
+      const hours = typeof row[C.HOURS] === 'number'
+        ? row[C.HOURS]
+        : typeof row[C.TOTAL_HOURS] === 'number'
+          ? row[C.TOTAL_HOURS]
+          : parseFloat(row[C.HOURS] || row[C.TOTAL_HOURS]) || 0;
 
       const dt = parseDate(String(rawDate));
       if (!dt) continue;
@@ -84,9 +88,9 @@ function parseHierarchicalRows(rows) {
         customer,
         project,
         subProject,
-        task:     String(row[COL.DESCRIPTION] || '').replace(/\s+/g, ' ').trim(),
+        task:     String(row[C.DESCRIPTION] || '').replace(/\s+/g, ' ').trim(),
         employee: String(rawEmployee).trim(),
-        date:     toISODate(dt),       // "YYYY-MM-DD" — easy to sort & filter
+        date:     toISODate(dt),
         hours
       });
     }
@@ -95,22 +99,72 @@ function parseHierarchicalRows(rows) {
   return records;
 }
 
-const VALID_TYPES = new Set(['project', 'employee', 'customer']);
+// Employee report: hierarchy is Employee → Date → leaf work record (customer/project/subProject)
+function parseEmployeeRows(rows) {
+  const records = [];
+  const C = EMPLOYEE_COL;
 
-// Detect the report type from sheet name / first data row when no override is given.
-function detectType(sheetName, firstDataRow) {
-  if (!firstDataRow) return 'project';
-  const name = (sheetName || '').toLowerCase();
-  // Employee report: top-level grouping is employee
-  if (firstDataRow[COL.EMPLOYEE] && !firstDataRow[COL.CUSTOMER] && !firstDataRow[COL.PROJECT]) {
-    return 'employee';
+  let dataStart = 3;
+  for (let i = 0; i < Math.min(6, rows.length); i++) {
+    if (Array.isArray(rows[i]) && rows[i].includes('תאריך')) {
+      dataStart = i + 1;
+      break;
+    }
   }
-  if (name.includes('employee') || name.includes('עובד')) return 'employee';
-  // Customer report: top-level grouping is customer only (no project column on first row)
-  if (firstDataRow[COL.CUSTOMER] && !firstDataRow[COL.PROJECT]) return 'customer';
-  if (name.includes('customer') || name.includes('לקוח')) return 'customer';
+
+  let employee = '', date = null;
+
+  for (let i = dataStart; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.every(v => v == null || v === '')) continue;
+
+    const rawEmployee   = row[C.EMPLOYEE];
+    const rawDate       = row[C.DATE];
+    const rawSubProject = row[C.SUB_PROJECT];
+    const rawProject    = row[C.PROJECT];
+    const rawCustomer   = row[C.CUSTOMER];
+
+    if (rawEmployee && !rawDate && !rawSubProject && !rawProject && !rawCustomer) {
+      // Employee header row
+      employee = String(rawEmployee).trim();
+      date = null;
+    } else if (rawDate && !rawEmployee && !rawSubProject && !rawProject && !rawCustomer) {
+      // Date context row
+      const dt = parseDate(String(rawDate));
+      date = dt ? toISODate(dt) : null;
+    } else if ((rawSubProject || rawProject || rawCustomer) && !rawDate && !rawEmployee) {
+      // Leaf work record
+      const hours = typeof row[C.HOURS] === 'number'
+        ? row[C.HOURS]
+        : parseFloat(row[C.HOURS]) || 0;
+
+      records.push({
+        customer:   String(rawCustomer  || '').trim(),
+        project:    String(rawProject   || '').trim(),
+        subProject: String(rawSubProject|| '').trim(),
+        task:       '',
+        employee,
+        date,
+        hours
+      });
+    }
+  }
+
+  return records;
+}
+
+// Detect report type from header row structure and content.
+// Employee report has 11 columns (עובד at col 10); project report has 12 (לקוח at col 11).
+function detectType(headerRow, titleRow, typeOverrideHint) {
+  if (typeOverrideHint) return typeOverrideHint;
+  const title = String(titleRow?.[0] || '').toLowerCase();
+  if (title.includes('עובד') || title.includes('employee')) return 'employee';
+  if (headerRow && headerRow[10] === 'עובד') return 'employee';
+  if (title.includes('לקוח') || title.includes('customer')) return 'customer';
   return 'project';
 }
+
+const VALID_TYPES = new Set(['project', 'employee', 'customer']);
 
 function parseExcelFile(buffer, filename, typeOverride) {
   const wb = XLSX.read(buffer, { type: 'buffer', cellDates: false });
@@ -118,10 +172,12 @@ function parseExcelFile(buffer, filename, typeOverride) {
   const ws = wb.Sheets[sheetName];
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
-  const type = (typeOverride && VALID_TYPES.has(typeOverride))
-    ? typeOverride
-    : detectType(sheetName, rows[3]);
-  const records = parseHierarchicalRows(rows);
+  const manualOverride = (typeOverride && VALID_TYPES.has(typeOverride)) ? typeOverride : null;
+  const type = detectType(rows[3], rows[1], manualOverride);
+
+  const records = type === 'employee'
+    ? parseEmployeeRows(rows)
+    : parseProjectRows(rows);
 
   return { filename, type, sheetName, records };
 }

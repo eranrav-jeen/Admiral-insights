@@ -292,6 +292,18 @@ function renderOverview() {
 
   buildBarChart('chart-projects-overview',  byProject,  '#6366f1');
   buildBarChart('chart-employees-overview', byEmployee, '#10b981');
+
+  const hasEmployee = state.files.some(f => f.type === 'employee');
+  const distRow = $('distribution-row');
+  if (hasEmployee) {
+    distRow.style.display = '';
+    buildDonutChart('chart-dist-customer',    topN(aggregate(r, 'customer'),    12));
+    buildDonutChart('chart-dist-project',     topN(aggregate(r, 'project'),     12));
+    buildDonutChart('chart-dist-subproject',  topN(aggregate(r, 'subProject'),  12));
+  } else {
+    distRow.style.display = 'none';
+    ['chart-dist-customer','chart-dist-project','chart-dist-subproject'].forEach(destroyChart);
+  }
 }
 
 function setKPIs(v) {
@@ -623,6 +635,34 @@ function buildBarChart(id, data, color) {
         }
       },
       scales: { x: { beginAtZero: true } }
+    }
+  });
+}
+
+function buildDonutChart(id, data) {
+  destroyChart(id);
+  const canvas = $(id);
+  if (!canvas || !data.length) return;
+  const total = data.reduce((s, [, v]) => s + v, 0);
+  state.charts[id] = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: data.map(([k]) => k || '(none)'),
+      datasets: [{ data: data.map(([, v]) => +v.toFixed(1)), backgroundColor: PALETTE }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '60%',
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        datalabels: {
+          display: ctx => (ctx.dataset.data[ctx.dataIndex] / total) >= 0.04,
+          color: '#fff',
+          font: { size: 11, weight: 'bold' },
+          formatter: (v) => `${((v / total) * 100).toFixed(0)}%`
+        }
+      }
     }
   });
 }

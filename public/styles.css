@@ -389,11 +389,13 @@ body {
   min-width: 0;
 }
 .chart-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 14px; color: var(--color-text); }
-.chart-card--half { flex: 0 0 calc(50% - 10px); min-width: 280px; }
-.chart-card--full { flex: 0 0 100%; }
+.chart-card--half  { flex: 0 0 calc(50% - 10px); min-width: 280px; }
+.chart-card--third { flex: 0 0 calc(33.333% - 14px); min-width: 240px; }
+.chart-card--full  { flex: 0 0 100%; }
 
 .chart-wrap { position: relative; height: 260px; }
-.chart-wrap--tall { height: 300px; }
+.chart-wrap--tall  { height: 300px; }
+.chart-wrap--donut { height: 300px; }
 
 /* ── Gantt ─────────────────────────────────────────────────────────────────── */
 .page-header .gantt-controls {
